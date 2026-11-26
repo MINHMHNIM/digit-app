@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nhận diện chữ số viết tay</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --nen: #f4f5f7;
+    --the: #ffffff;
+    --chu: #1d2330;
+    --chu-phu: #6b7385;
+    --vien: #e2e5eb;
+    --nhan: #e8710a;
+    --nhan-nhat: #fdecdc;
+    --thanh: #c9cfd9;
+    --loi: #c62828;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--nen);
+    color: var(--chu);
+    line-height: 1.45;
+  }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 20px 48px; }
+  header h1 { margin: 0 0 4px; font-size: 1.6rem; letter-spacing: -0.01em; }
+  header p { margin: 0 0 24px; color: var(--chu-phu); }
+  .luoi { display: grid; grid-template-columns: auto 1fr; gap: 20px; align-items: start; }
+  .the {
+    background: var(--the);
+    border: 1px solid var(--vien);
+    border-radius: 14px;
+    padding: 20px;
+  }
+  .the h2 { margin: 0 0 14px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--chu-phu); }
+  canvas {
+    display: block;
+    width: min(320px, 80vw);
+    aspect-ratio: 1;
+    border-radius: 10px;
+    background: #000;
+    touch-action: none;
+    cursor: crosshair;
+  }
+  .hang-nut { display: flex; gap: 10px; margin-top: 14px; }
+  button {
+    flex: 1;
+    font: inherit;
+    font-weight: 600;
+    padding: 10px 14px;
+    border-radius: 9px;
+    border: 1px solid var(--vien);
+    background: var(--the);
+    color: var(--chu);
+    cursor: pointer;
+  }
+  button.chinh { background: var(--nhan); border-color: var(--nhan); color: #fff; }
+  button:hover { filter: brightness(0.96); }
+  .ket-qua { display: flex; gap: 20px; align-items: center; margin-bottom: 18px; }
+  .chu-so-lon {
+    width: 96px; height: 96px;
+    display: grid; place-items: center;
+    font-size: 3.4rem; font-weight: 700;
+    border-radius: 14px;
+    background: var(--nhan-nhat);
+    color: var(--nhan);
+  }
+  .do-tin-cay { font-size: 1.05rem; }
+  .do-tin-cay small { display: block; color: var(--chu-phu); font-size: 0.85rem; }
+  .thong-bao { color: var(--chu-phu); min-height: 1.4em; }
+  .thong-bao.loi { color: var(--loi); }
+  .cac-thanh { display: grid; gap: 5px; }
+  .thanh { display: grid; grid-template-columns: 14px 1fr 46px; gap: 10px; align-items: center; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+  .ray { height: 9px; background: var(--nen); border-radius: 5px; overflow: hidden; }
+  .ray span { display: block; height: 100%; width: 0; background: var(--thanh); border-radius: 5px; transition: width 0.25s ease; }
+  .thanh.cao-nhat .ray span { background: var(--nhan); }
+  .thanh.cao-nhat { font-weight: 700; }
+  .thanh em { font-style: normal; text-align: right; color: var(--chu-phu); }
+  .khoi-8x8 { display: flex; gap: 16px; align-items: center; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--vien); }
+  .luoi-8x8 { display: grid; grid-template-columns: repeat(8, 12px); gap: 1px; background: #000; padding: 1px; border-radius: 4px; }
+  .luoi-8x8 div { width: 12px; height: 12px; background: #000; }
+  .khoi-8x8 p { margin: 0; font-size: 0.85rem; color: var(--chu-phu); }
+  footer {
+    margin-top: 20px;
+    font-size: 0.85rem;
+    color: var(--chu-phu);
+    display: flex; flex-wrap: wrap; gap: 6px 16px;
+  }
+  .cham { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--thanh); margin-right: 6px; vertical-align: 1px; }
+  .cham.song { background: #2e9d4f; }
+  @media (max-width: 680px) {
+    .luoi { grid-template-columns: 1fr; }
+    canvas { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Nhận diện chữ số viết tay</h1>
+    <p>Vẽ một chữ số từ 0 đến 9 vào khung đen, model sẽ đoán khi bạn nhấc tay.</p>
+  </header>
+
+  <div class="luoi">
+    <section class="the">
+      <h2>Khung vẽ</h2>
+      <canvas id="khung-ve" width="280" height="280"></canvas>
+      <div class="hang-nut">
+        <button id="nut-xoa" type="button">Xóa</button>
+        <button id="nut-doan" class="chinh" type="button">Đoán</button>
+      </div>
+    </section>
+
+    <section class="the">
+      <h2>Kết quả</h2>
+      <div class="ket-qua">
+        <div class="chu-so-lon" id="chu-so">?</div>
+        <div class="do-tin-cay">
+          <span id="do-tin-cay">Chưa có dự đoán</span>
+          <small id="thong-bao" class="thong-bao">Hãy vẽ một chữ số.</small>
+        </div>
+      </div>
+      <div class="cac-thanh" id="cac-thanh"></div>
+      <div class="khoi-8x8">
+        <div class="luoi-8x8" id="luoi-8x8"></div>
+        <p>Ảnh 8×8 mà model thực sự nhìn thấy sau khi tiền xử lý nét vẽ của bạn.</p>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    <span><span class="cham" id="cham-trang-thai"></span><span id="trang-thai">Đang kết nối máy chủ…</span></span>
+    <span id="do-chinh-xac"></span>
+  </footer>
+</main>
+
+<script>
+  const khungVe = document.getElementById("khung-ve");
+  const butVe = khungVe.getContext("2d");
+  const oChuSo = document.getElementById("chu-so");
+  const oDoTinCay = document.getElementById("do-tin-cay");
+  const oThongBao = document.getElementById("thong-bao");
+  const oCacThanh = document.getElementById("cac-thanh");
+  const oLuoi8x8 = document.getElementById("luoi-8x8");
+
+  let dangVe = false;
+  let daVe = false;
+  let henGio = null;
+
+  function lamMoiKhung() {
+    butVe.fillStyle = "#000";
+    butVe.fillRect(0, 0, khungVe.width, khungVe.height);
+    butVe.strokeStyle = "#fff";
+    butVe.lineWidth = 20;
+    butVe.lineCap = "round";
+    butVe.lineJoin = "round";
+    daVe = false;
+  }
+
+  function toaDo(suKien) {
+    const khung = khungVe.getBoundingClientRect();
+    return [
+      (suKien.clientX - khung.left) * khungVe.width / khung.width,
+      (suKien.clientY - khung.top) * khungVe.height / khung.height,
+    ];
+  }
+
+  khungVe.addEventListener("pointerdown", (suKien) => {
+    dangVe = true;
+    daVe = true;
+    clearTimeout(henGio);
+    khungVe.setPointerCapture(suKien.pointerId);
+    const [x, y] = toaDo(suKien);
+    butVe.beginPath();
+    butVe.moveTo(x, y);
+    butVe.lineTo(x + 0.01, y);
+    butVe.stroke();
+  });
+
+  khungVe.addEventListener("pointermove", (suKien) => {
+    if (!dangVe) return;
+    const [x, y] = toaDo(suKien);
+    butVe.lineTo(x, y);
+    butVe.stroke();
+  });
+
+  function ketThucNet() {
+    if (!dangVe) return;
+    dangVe = false;
+    clearTimeout(henGio);
+    henGio = setTimeout(duDoan, 350);
+  }
+  khungVe.addEventListener("pointerup", ketThucNet);
+  khungVe.addEventListener("pointercancel", ketThucNet);
+
+  function veThanh(xacSuat, chuSo) {
+    oCacThanh.innerHTML = "";
+    for (let n = 0; n <= 9; n++) {
+      const p = xacSuat ? xacSuat[String(n)] ?? 0 : 0;
+      const hang = document.createElement("div");
+      hang.className = "thanh" + (xacSuat && n === chuSo ? " cao-nhat" : "");
+      hang.innerHTML = `<b>${n}</b><div class="ray"><span style="width:${(p * 100).toFixed(1)}%"></span></div><em>${xacSuat ? (p * 100).toFixed(1) + "%" : "–"}</em>`;
+      oCacThanh.appendChild(hang);
+    }
+  }
+
+  function veLuoi8x8(anh) {
+    oLuoi8x8.innerHTML = "";
+    for (let i = 0; i < 64; i++) {
+      const o = document.createElement("div");
+      const giaTri = anh ? anh[Math.floor(i / 8)][i % 8] : 0;
+      const doSang = Math.round(giaTri / 16 * 255);
+      o.style.background = `rgb(${doSang},${doSang},${doSang})`;
+      oLuoi8x8.appendChild(o);
+    }
+  }
+
+  function datThongBao(noiDung, laLoi = false) {
+    oThongBao.textContent = noiDung;
+    oThongBao.classList.toggle("loi", laLoi);
+  }
+
+  function datLai() {
+    lamMoiKhung();
+    oChuSo.textContent = "?";
+    oDoTinCay.textContent = "Chưa có dự đoán";
+    datThongBao("Hãy vẽ một chữ số.");
+    veThanh(null);
+    veLuoi8x8(null);
+  }
+
+  async function duDoan() {
+    if (!daVe) {
+      datThongBao("Bạn chưa vẽ gì cả.", true);
+      return;
+    }
+    datThongBao("Đang gửi lên máy chủ…");
+    const batDau = performance.now();
+    try {
+      const phanHoi = await fetch("/api/du-doan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ anh: khungVe.toDataURL("image/png") }),
+      });
+      const duLieu = await phanHoi.json();
+      if (!phanHoi.ok) throw new Error(duLieu.detail || "Máy chủ báo lỗi");
+      const thoiGian = Math.round(performance.now() - batDau);
+      oChuSo.textContent = duLieu.chu_so;
+      oDoTinCay.textContent = `Độ tin cậy ${(duLieu.xac_suat[String(duLieu.chu_so)] * 100).toFixed(1)}%`;
+      datThongBao(`Máy chủ trả lời sau ${thoiGian} ms`);
+      veThanh(duLieu.xac_suat, duLieu.chu_so);
+      veLuoi8x8(duLieu.anh_8x8);
+    } catch (loi) {
+      datThongBao(loi.message || "Không kết nối được máy chủ", true);
+    }
+  }
+
+  async function taiThongTin() {
+    const oTrangThai = document.getElementById("trang-thai");
+    try {
+      const duLieu = await (await fetch("/api/thong-tin")).json();
+      document.getElementById("cham-trang-thai").classList.add("song");
+      oTrangThai.textContent = duLieu.ec2
+        ? `Đang chạy trên AWS EC2: ${duLieu.ec2.instance_id} (${duLieu.ec2.loai_may}, ${duLieu.ec2.vung})`
+        : `Đang chạy trên máy ${duLieu.hostname} (không phải EC2)`;
+      document.getElementById("do-chinh-xac").textContent =
+        `Độ chính xác model trên tập test: ${(duLieu.do_chinh_xac_tap_test * 100).toFixed(1)}%`;
+    } catch {
+      oTrangThai.textContent = "Không kết nối được máy chủ";
+    }
+  }
+
+  document.getElementById("nut-xoa").addEventListener("click", datLai);
+  document.getElementById("nut-doan").addEventListener("click", duDoan);
+
+  datLai();
+  taiThongTin();
+</script>
+</body>
+</html>
